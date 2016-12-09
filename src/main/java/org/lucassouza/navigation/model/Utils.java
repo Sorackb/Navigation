@@ -1,5 +1,6 @@
 package org.lucassouza.navigation.model;
 
+import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,5 +22,11 @@ public class Utils {
             });
 
     return group;
+  }
+
+  public static String stripAccents(String text) {
+    text = Normalizer.normalize(text, Normalizer.Form.NFD);
+    text = text.replaceAll("[\\p{InCombiningDiacriticalMarks}]", "");
+    return text;
   }
 }
