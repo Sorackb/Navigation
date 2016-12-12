@@ -77,6 +77,10 @@ public class Navigation {
       }
     }
   }
+  
+  public Response getLastResponse() {
+    return this.lastResponse;
+  }
 
   public Document getPage() {
     // Só realiza o parse se a página estiver vazia
