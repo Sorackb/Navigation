@@ -60,17 +60,17 @@ public class Navigation {
       this.lastResponse = connection.method(method).execute();
       this.page = null;
       this.cookies.putAll(this.lastResponse.cookies()); // Update cookies
-    } catch (IOException ex) {
+    } catch (IOException exio) {
       //this.registrarMensagem(TipoMensagemBasico.AVISO, "Tentativa " + tentativa + " falhou. O seguinte erro ocorreu: " + ex.toString());
-      Logger.getLogger(Navigation.class.getName()).log(Level.SEVERE, null, ex);
+      Logger.getLogger(Navigation.class.getName()).log(Level.SEVERE, null, exio);
       attempt++;
 
       if (attempt == max) {
         throw new IOException("Attempts exceeded.");
       } else {
         try {
-          Thread.sleep(50);
-        } catch (InterruptedException ex1) {
+          Thread.sleep(100 * 2 ^ attempt); // The time will double in every attempt
+        } catch (InterruptedException exie) {
           // There's nothing to do with this
         }
         this.execute(connection, method, attempt, max);
