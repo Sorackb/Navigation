@@ -21,16 +21,19 @@ public class Navigation {
   private final HashMap<String, String> cookies;
   private Response lastResponse;
   private Document page;
+  private int count;
 
   public Navigation(HashMap<String, String> fields, HashMap<String, String> cookies) {
     this.fields = fields;
     this.cookies = cookies;
+    this.count = 0;
   }
 
   public void request(Content content) throws IOException {
     Connection connection;
     String[] sent;
 
+    this.count++;
     connection = Jsoup.connect(content.getUrl())
             .timeout(content.getTimeout() * 1000) // O método recebe o valor em ms
             .userAgent(content.getBrowser().getUserAgent())
@@ -79,6 +82,10 @@ public class Navigation {
         this.execute(connection, method, attempt, max);
       }
     }
+  }
+
+  public int count() {
+    return count;
   }
 
   public Response getLastResponse() {
