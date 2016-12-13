@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -60,6 +61,8 @@ public class Navigation {
       this.lastResponse = connection.method(method).execute();
       this.page = null;
       this.cookies.putAll(this.lastResponse.cookies()); // Update cookies
+    } catch (HttpStatusException ex) {
+      throw ex;
     } catch (IOException exio) {
       //this.registrarMensagem(TipoMensagemBasico.AVISO, "Tentativa " + tentativa + " falhou. O seguinte erro ocorreu: " + ex.toString());
       Logger.getLogger(Navigation.class.getName()).log(Level.SEVERE, null, exio);
@@ -77,7 +80,7 @@ public class Navigation {
       }
     }
   }
-  
+
   public Response getLastResponse() {
     return this.lastResponse;
   }
