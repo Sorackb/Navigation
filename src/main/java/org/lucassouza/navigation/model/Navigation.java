@@ -1,15 +1,16 @@
 package org.lucassouza.navigation.model;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
-import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.lucassouza.tools.GeneralTool;
 
 /**
  *
@@ -31,7 +32,7 @@ public class Navigation {
 
   public void request(Content content) throws IOException {
     Connection connection;
-    String[] sent;
+    String[] toSend;
 
     this.count++;
     connection = Jsoup.connect(content.getUrl())
@@ -46,8 +47,8 @@ public class Navigation {
     connection.headers(content.getHeaders());
 
     if (content.getRaw() == null) {
-      sent = content.getFields().toArray(new String[content.getFields().size()]); // Transforma em array
-      connection.data(Utils.extract(this.fields, sent));
+      toSend = content.getFields().toArray(new String[content.getFields().size()]); // Transforma em array
+      connection.data(GeneralTool.extract(this.fields, toSend));
     } else {
       connection.requestBody(content.getRaw().toString());
     }
@@ -64,23 +65,24 @@ public class Navigation {
       this.lastResponse = connection.method(method).execute();
       this.page = null;
       this.cookies.putAll(this.lastResponse.cookies()); // Update cookies
-    } catch (HttpStatusException ex) {
-      throw ex;
-    } catch (IOException exio) {
-      //this.registrarMensagem(TipoMensagemBasico.AVISO, "Tentativa " + tentativa + " falhou. O seguinte erro ocorreu: " + ex.toString());
-      Logger.getLogger(Navigation.class.getName()).log(Level.SEVERE, null, exio);
+    } catch (SocketTimeoutException stex) {
+      Logger.getLogger(Navigation.class.getName()).log(Level.SEVERE, null, stex);
       attempt++;
 
       if (attempt == max) {
-        throw new IOException("Attempts exceeded.");
+        System.out.println("Attempts exceeded.");
+        throw stex;
       } else {
         try {
           Thread.sleep(100 * 2 ^ attempt); // The time will double in every attempt
         } catch (InterruptedException exie) {
           // There's nothing to do with this
         }
+
         this.execute(connection, method, attempt, max);
       }
+    } catch (IOException ex) {
+      throw ex;
     }
   }
 

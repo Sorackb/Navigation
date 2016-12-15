@@ -22,5 +22,10 @@
       <version>20150729</version>
       <type>jar</type>
     </dependency>
+    <dependency>
+      <groupId>org.lucassouza</groupId>
+      <artifactId>Tools</artifactId>
+      <version>1.0</version>
+    </dependency>
   </dependencies>
 </project>
