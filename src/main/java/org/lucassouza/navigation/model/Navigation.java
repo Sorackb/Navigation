@@ -3,13 +3,14 @@ package org.lucassouza.navigation.model;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.LinkedHashSet;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.lucassouza.tools.GeneralTool;
 
 /**
@@ -20,17 +21,65 @@ public class Navigation {
 
   private final HashMap<String, String> fields;
   private final HashMap<String, String> cookies;
+  private final Content.Initializer defaults;
   private Response lastResponse;
   private Document page;
   private int count;
+
+  public Navigation() {
+    this(new HashMap<>(), new HashMap<>());
+  }
 
   public Navigation(HashMap<String, String> fields, HashMap<String, String> cookies) {
     this.fields = fields;
     this.cookies = cookies;
     this.count = 0;
+    this.defaults = Content.initializer();
+  }
+
+  public void submit(Element form) throws IOException {
+    HashMap<String, String> subfields = new HashMap<>();
+    LinkedHashSet<String> names = new LinkedHashSet<>();
+    Elements inputs;
+    Content content;
+    String method;
+
+    if (form.tagName().equalsIgnoreCase("form")) {
+      throw new RuntimeException("The element submitted should be a <form>");
+    }
+
+    inputs = form.select("input,select");
+
+    inputs.forEach(input -> {
+      String name;
+      String value;
+
+      name = input.attr("name");
+      value = GeneralTool.nvl(this.fields.get(name), input.val(), "");
+      subfields.put(name, value);
+      names.add(name);
+    });
+
+    method = form.attr("method").toUpperCase();
+
+    if (method.isEmpty()) {
+      method = "GET";
+    }
+
+    content = this.defaults.initialize()
+            .complement(form.attr("action"))
+            .method(Method.valueOf(method))
+            .fields(names)
+            .build();
+
+    this.request(subfields, content);
   }
 
   public void request(Content content) throws IOException {
+    this.request(this.fields, content);
+  }
+
+  private void request(HashMap<String, String> subfields, Content content) throws IOException {
     Connection connection;
     String[] toSend;
 
@@ -42,13 +91,13 @@ public class Navigation {
             .followRedirects(content.getRedirect())
             .ignoreContentType(true)
             .ignoreHttpErrors(content.getIgnore())
-            .maxBodySize(5000000);//5MB
+            .maxBodySize(0); // unlimited
 
     connection.headers(content.getHeaders());
 
     if (content.getRaw() == null) {
       toSend = content.getFields().toArray(new String[content.getFields().size()]); // Transforma em array
-      connection.data(GeneralTool.extract(this.fields, toSend));
+      connection.data(GeneralTool.extract(subfields, toSend));
     } else {
       connection.requestBody(content.getRaw());
     }
@@ -57,33 +106,29 @@ public class Navigation {
   }
 
   private void execute(Connection connection, Method method, int max) throws IOException {
-    this.execute(connection, method, 1, max);
+    this.execute(connection, method, max, 1);
   }
 
-  private void execute(Connection connection, Method method, int attempt, int max) throws IOException {
+  private void execute(Connection connection, Method method, int max, int attempt) throws IOException {
     try {
       this.lastResponse = connection.method(method).execute();
       this.page = null;
       this.cookies.putAll(this.lastResponse.cookies()); // Update cookies
-    } catch (SocketTimeoutException stex) {
-      Logger.getLogger(Navigation.class.getName()).log(Level.SEVERE, null, stex);
+    } catch (SocketTimeoutException exception) {
       attempt++;
 
       if (attempt == max) {
         System.out.println("Attempts exceeded.");
-        throw stex;
+        throw exception;
       } else {
-        try {
-          Thread.sleep(100 * 2 ^ attempt); // The time will double in every attempt
-        } catch (InterruptedException exie) {
-          // There's nothing to do with this
-        }
-
-        this.execute(connection, method, attempt, max);
+        this.sleep(100 * 2 ^ (attempt - 1)); // Starting in 100 millis, the time will double in every attempt
+        this.execute(connection, method, max, attempt);
       }
-    } catch (IOException ex) {
-      throw ex;
     }
+  }
+
+  public Content.Initializer getDefaults() {
+    return this.defaults;
   }
 
   public int count() {
@@ -105,5 +150,13 @@ public class Navigation {
     }
 
     return this.page;
+  }
+
+  private void sleep(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException exception) {
+      // There's nothing to do with this
+    }
   }
 }
