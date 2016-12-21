@@ -50,7 +50,7 @@ public class Navigation {
       toSend = content.getFields().toArray(new String[content.getFields().size()]); // Transforma em array
       connection.data(GeneralTool.extract(this.fields, toSend));
     } else {
-      connection.requestBody(content.getRaw().toString());
+      connection.requestBody(content.getRaw());
     }
 
     this.execute(connection, content.getMethod(), content.getAttempts());

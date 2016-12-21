@@ -3,7 +3,6 @@ package org.lucassouza.navigation.model;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import org.json.JSONObject;
 import org.jsoup.Connection.Method;
 
 /**
@@ -22,7 +21,7 @@ public class Content {
   private final Boolean ignore;
   private final int attempts;
   private final int timeout;
-  private final JSONObject raw;
+  private final String raw;
 
   public static class Initializer {
 
@@ -74,7 +73,7 @@ public class Content {
     private Boolean ignore;
     private int attempts;
     private int timeout;
-    private JSONObject raw;
+    private String raw;
 
     private Builder(final Browser browser, final String domain, final int attempts, final int timeout) {
       this();
@@ -149,8 +148,7 @@ public class Content {
       return this;
     }
 
-    public Builder raw(final JSONObject value) {
-      this.headers.put("Content-Type", "application/json");
+    public Builder raw(final String value) {
       this.raw = value;
       return this;
     }
@@ -177,7 +175,7 @@ public class Content {
   private Content(final LinkedHashMap<String, String> headers, final LinkedHashSet<String> fields,
           final Browser browser, final String domain, final String complement, final Method method,
           final Boolean redirect, final Boolean ignore, final int attempts,
-          final int timeout, final JSONObject raw) {
+          final int timeout, final String raw) {
     this.headers = headers;
     this.fields = fields;
     this.browser = browser;
@@ -225,7 +223,7 @@ public class Content {
     return timeout;
   }
 
-  public JSONObject getRaw() {
+  public String getRaw() {
     return raw;
   }
 

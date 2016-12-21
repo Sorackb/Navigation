@@ -17,12 +17,6 @@
       <version>1.10.1</version>
     </dependency>
     <dependency>
-      <groupId>org.json</groupId>
-      <artifactId>json</artifactId>
-      <version>20150729</version>
-      <type>jar</type>
-    </dependency>
-    <dependency>
       <groupId>org.lucassouza</groupId>
       <artifactId>Tools</artifactId>
       <version>1.0</version>
