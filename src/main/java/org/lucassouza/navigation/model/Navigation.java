@@ -6,8 +6,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
@@ -132,27 +130,23 @@ public class Navigation {
   }
 
   public HashMap<String, String> retrieve(String... names) {
-    Map<String, String> subfields;
+    HashMap<String, String> subfields = new HashMap<>();
     Document current;
     List<String> list;
 
     current = this.getPage(); // update the page
     list = Arrays.asList(names);
 
-    list.forEach(name -> {
+    list.forEach((name) -> {
       String value;
 
       value = current.getElementsByAttributeValue("name", name).val();
-      this.fields.put(name, value);
+      subfields.put(name, value);
     });
 
-    subfields = this.fields
-            .entrySet()
-            .stream()
-            .filter(item -> list.contains(item.getKey()))
-            .collect(Collectors.toMap(item -> item.getKey(), item -> item.getValue()));
+    this.fields.putAll(subfields);
 
-    return new HashMap<>(subfields);
+    return subfields;
   }
 
   public Content.Initializer getDefaults() {
