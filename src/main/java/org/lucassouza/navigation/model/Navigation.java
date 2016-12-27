@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.logging.Level;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
@@ -51,6 +50,8 @@ public class Navigation {
     String[] toSend;
 
     this.count++;
+    Herald.notify(MessageType.START_TIMER, content.getUrl());
+
     connection = Jsoup.connect(content.getUrl())
             .timeout(content.getTimeout() * 1000) // O método recebe o valor em ms
             .userAgent(content.getBrowser().getUserAgent())
@@ -70,6 +71,7 @@ public class Navigation {
     }
 
     this.execute(connection, content.getMethod(), content.getAttempts());
+    Herald.notify(MessageType.FINISH_TIMER, content.getUrl());
   }
 
   private void execute(Connection connection, Method method, int max) throws IOException {
@@ -77,18 +79,22 @@ public class Navigation {
   }
 
   private void execute(Connection connection, Method method, int max, int attempt) throws IOException {
+    long sleep;
+
     try {
       this.lastResponse = connection.method(method).execute();
       this.page = null;
       this.cookies.putAll(this.lastResponse.cookies()); // Update cookies
     } catch (SocketTimeoutException exception) {
-      attempt++;
-
       if (attempt == max) {
         Herald.notify(MessageType.WARN, "Attempts exceeded.");
         throw exception;
       } else {
-        this.sleep(100 * 2 ^ (attempt - 1)); // Starting in 100 millis, the time will double in every attempt
+        Herald.notify(MessageType.WARN, "Timeout exceeded for the " + attempt + " attempt.");
+        sleep = 100 * 2 ^ (attempt - 1); // Starting in 100 millis, the time will double in every attempt
+        this.sleep(sleep);
+        attempt++;
+        Herald.notify(MessageType.INFO, "Starting the " + attempt + " attempt.");
         this.execute(connection, method, max, attempt);
       }
     }
@@ -107,7 +113,7 @@ public class Navigation {
 
     inputs = form.select("input,select");
 
-    inputs.forEach(input -> {
+    inputs.forEach((Element input) -> {
       String name;
       String value;
 
@@ -132,7 +138,7 @@ public class Navigation {
     this.request(subfields, content);
   }
 
-  public HashMap<String, String> retrieve(String... names) {
+  public HashMap<String, String> retrieve(Attribute attribute, String... names) {
     HashMap<String, String> subfields = new HashMap<>();
     Document current;
     List<String> list;
@@ -140,11 +146,16 @@ public class Navigation {
     current = this.getPage(); // update the page
     list = Arrays.asList(names);
 
-    list.forEach((name) -> {
+    list.forEach((String name) -> {
+      Element element;
       String value;
 
-      value = current.getElementsByAttributeValue("name", name).val();
-      subfields.put(name, value);
+      element = current.getElementsByAttributeValue(attribute.toString().toLowerCase(), name).first();
+
+      if (element != null) {
+        value = element.val();
+        subfields.put(name, value);
+      }
     });
 
     this.fields.putAll(subfields);
