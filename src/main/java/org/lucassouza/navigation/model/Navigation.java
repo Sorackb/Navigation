@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.logging.Level;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
@@ -14,6 +15,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.lucassouza.tools.GeneralTool;
+import org.lucassouza.tools.Herald;
+import org.lucassouza.tools.MessageType;
 
 /**
  *
@@ -82,7 +85,7 @@ public class Navigation {
       attempt++;
 
       if (attempt == max) {
-        System.out.println("Attempts exceeded.");
+        Herald.notify(MessageType.WARN, "Attempts exceeded.");
         throw exception;
       } else {
         this.sleep(100 * 2 ^ (attempt - 1)); // Starting in 100 millis, the time will double in every attempt
