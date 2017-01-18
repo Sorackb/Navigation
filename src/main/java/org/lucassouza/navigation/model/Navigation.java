@@ -23,12 +23,12 @@ import org.lucassouza.tools.MessageType;
  */
 public class Navigation {
 
-  private final HashMap<String, String> fields;
-  private final HashMap<String, String> cookies;
-  private final Content.Initializer defaults;
-  private Response lastResponse;
-  private Document page;
-  private int count;
+  protected final HashMap<String, String> fields;
+  protected final HashMap<String, String> cookies;
+  protected Content.Initializer defaults;
+  protected Response lastResponse;
+  protected Document page;
+  protected int count;
 
   public Navigation() {
     this(new HashMap<>(), new HashMap<>());
