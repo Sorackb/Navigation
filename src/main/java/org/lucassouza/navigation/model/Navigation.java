@@ -1,10 +1,7 @@
 package org.lucassouza.navigation.model;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.SocketTimeoutException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -62,9 +59,7 @@ public class Navigation {
     // Organiza o conteúdo que será enviado, seja por URL como pelo corpo da resposta
     toSend = content.getFields().toArray(new String[content.getFields().size()]);
 
-    if (Method.GET.equals(content.getMethod())) {
-      url = this.mountURLQuery(toSend);
-    } else if (content.getRaw() == null) {
+    if (content.getRaw() == null) {
       data.putAll(GeneralTool.extract(subfields, toSend));
     } else {
       body = content.getRaw();
@@ -216,22 +211,5 @@ public class Navigation {
     } catch (InterruptedException exception) {
       // There's nothing to do with this
     }
-  }
-
-  private String mountURLQuery(String... parameters) throws UnsupportedEncodingException {
-    ArrayList<String> list = new ArrayList<>();
-    String encoded = "";
-
-    for (String parameter : parameters) {
-      String value;
-
-      value = this.fields.getOrDefault(parameter, "");
-      list.add(URLEncoder.encode(parameter, "UTF-8") + "=" + value);
-    }
-
-    encoded = String.join("&", list.toArray(new String[list.size()]));
-    encoded = encoded.isEmpty() ? encoded : "?" + encoded;
-
-    return encoded;
   }
 }
