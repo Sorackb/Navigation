@@ -1,9 +1,13 @@
 package org.lucassouza.navigation.model;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.SocketTimeoutException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import org.jsoup.Connection;
@@ -46,29 +50,39 @@ public class Navigation {
   }
 
   private void request(HashMap<String, String> subfields, Content content) throws IOException {
+    LinkedHashMap<String, String> data = new LinkedHashMap<>();
+    String body = null;
     Connection connection;
     String[] toSend;
+    String url = "";
 
     this.count++;
     Herald.notify(MessageType.START_TIMER, content.getUrl());
 
-    connection = Jsoup.connect(content.getUrl())
+    // Organiza o conteúdo que será enviado, seja por URL como pelo corpo da resposta
+    toSend = content.getFields().toArray(new String[content.getFields().size()]);
+
+    if (Method.GET.equals(content.getMethod())) {
+      url = this.mountURLQuery(toSend);
+    } else if (content.getRaw() == null) {
+      data.putAll(GeneralTool.extract(subfields, toSend));
+    } else {
+      body = content.getRaw();
+    }
+
+    url = content.getUrl() + url;
+
+    connection = Jsoup.connect(url)
             .timeout(content.getTimeout() * 1000) // O método recebe o valor em ms
             .userAgent(content.getBrowser().getUserAgent())
             .cookies(this.cookies)
+            .headers(content.getHeaders())
             .followRedirects(content.getRedirect())
             .ignoreContentType(true)
             .ignoreHttpErrors(content.getIgnore())
-            .maxBodySize(0); // unlimited
-
-    connection.headers(content.getHeaders());
-
-    if (content.getRaw() == null) {
-      toSend = content.getFields().toArray(new String[content.getFields().size()]); // Transforma em array
-      connection.data(GeneralTool.extract(subfields, toSend));
-    } else {
-      connection.requestBody(content.getRaw());
-    }
+            .maxBodySize(0) // unlimited
+            .data(data)
+            .requestBody(body);
 
     this.execute(connection, content.getMethod(), content.getAttempts());
     Herald.notify(MessageType.FINISH_TIMER, content.getUrl());
@@ -79,24 +93,28 @@ public class Navigation {
   }
 
   private void execute(Connection connection, Method method, int max, int attempt) throws IOException {
-    long sleep;
-
     try {
       this.lastResponse = connection.method(method).execute();
       this.page = null;
       this.cookies.putAll(this.lastResponse.cookies()); // Update cookies
     } catch (SocketTimeoutException exception) {
-      if (attempt == max) {
-        Herald.notify(MessageType.WARN, "Attempts exceeded.");
-        throw exception;
-      } else {
-        Herald.notify(MessageType.WARN, "Timeout exceeded for the " + attempt + " attempt.");
-        sleep = 100 * 2 ^ (attempt - 1); // Starting in 100 millis, the time will double in every attempt
-        this.sleep(sleep);
-        attempt++;
-        Herald.notify(MessageType.INFO, "Starting the " + attempt + " attempt.");
-        this.execute(connection, method, max, attempt);
-      }
+      this.verifyAttempt(connection, method, exception, max, attempt);
+    }
+  }
+
+  private void verifyAttempt(Connection connection, Method method, IOException exception, int max, int attempt) throws IOException {
+    long sleep;
+
+    if (attempt == max) {
+      Herald.notify(MessageType.WARN, "Attempts exceeded.");
+      throw exception;
+    } else {
+      Herald.notify(MessageType.WARN, "Timeout exceeded for the " + attempt + " attempt.");
+      sleep = 100 * 2 ^ (attempt - 1); // Starting in 100 millis, the time will double in every attempt
+      this.sleep(sleep);
+      attempt++;
+      Herald.notify(MessageType.INFO, "Starting the " + attempt + " attempt.");
+      this.execute(connection, method, max, attempt);
     }
   }
 
@@ -163,6 +181,10 @@ public class Navigation {
     return subfields;
   }
 
+  public HashMap<String, String> getFields() {
+    return this.fields;
+  }
+
   public Content.Initializer getDefaults() {
     return this.defaults;
   }
@@ -194,5 +216,22 @@ public class Navigation {
     } catch (InterruptedException exception) {
       // There's nothing to do with this
     }
+  }
+
+  private String mountURLQuery(String... parameters) throws UnsupportedEncodingException {
+    ArrayList<String> list = new ArrayList<>();
+    String encoded = "";
+
+    for (String parameter : parameters) {
+      String value;
+
+      value = this.fields.getOrDefault(parameter, "");
+      list.add(URLEncoder.encode(parameter, "UTF-8") + "=" + value);
+    }
+
+    encoded = String.join("&", list.toArray(new String[list.size()]));
+    encoded = encoded.isEmpty() ? encoded : "?" + encoded;
+
+    return encoded;
   }
 }
