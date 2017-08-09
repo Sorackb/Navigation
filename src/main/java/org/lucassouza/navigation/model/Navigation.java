@@ -7,6 +7,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import org.jsoup.Connection;
 import org.jsoup.Connection.Method;
 import org.jsoup.Connection.Response;
@@ -24,43 +27,25 @@ import org.lucassouza.tools.MessageType;
  */
 public class Navigation {
 
-  protected final HashMap<String, String> fields;
-  protected final HashMap<String, String> cookies;
-  protected Content.Initializer defaults;
-  protected Response lastResponse;
-  protected Document page;
-  protected int count;
-
-  public Navigation() {
-    this(new HashMap<>(), new HashMap<>());
+  public CompletableFuture<Response> request(Map<String, String> fields, Map<String, String> cookies, Content content) {
+    return CompletableFuture.supplyAsync(() -> requestSync(fields, cookies, content));
   }
 
-  public Navigation(HashMap<String, String> fields, HashMap<String, String> cookies) {
-    this.fields = fields;
-    this.cookies = cookies;
-    this.count = 0;
-    this.defaults = Content.initializer();
-  }
-
-  public void request(Content content) throws IOException {
-    this.request(this.fields, content);
-  }
-
-  private void request(HashMap<String, String> subfields, Content content) throws IOException {
-    LinkedHashMap<String, String> data = new LinkedHashMap<>();
+  public Response requestSync(Map<String, String> fields, Map<String, String> cookies, Content content) {
+    Map<String, String> data = new LinkedHashMap<>();
     String body = null;
     Connection connection;
     String[] toSend;
     String url = "";
+    Response response;
 
-    this.count++;
     Herald.notify(MessageType.START_TIMER, content.getUrl());
 
     // Organiza o conteúdo que será enviado, seja por URL como pelo corpo da resposta
     toSend = content.getFields().toArray(new String[content.getFields().size()]);
 
     if (content.getRaw() == null) {
-      data.putAll(GeneralTool.extract(subfields, toSend));
+      data.putAll(GeneralTool.extract(fields, toSend));
     } else {
       body = content.getRaw();
     }
@@ -70,7 +55,7 @@ public class Navigation {
     connection = Jsoup.connect(url)
             .timeout(content.getTimeout() * 1000) // O método recebe o valor em ms
             .userAgent(content.getBrowser().getUserAgent())
-            .cookies(this.cookies)
+            .cookies(cookies)
             .headers(content.getHeaders())
             .followRedirects(content.getRedirect())
             .ignoreContentType(true)
@@ -79,43 +64,49 @@ public class Navigation {
             .data(data)
             .requestBody(body);
 
-    this.execute(connection, content.getMethod(), content.getAttempts());
+    response = this.execute(cookies, connection, content.getMethod(), content.getAttempts());
     Herald.notify(MessageType.FINISH_TIMER, content.getUrl());
+    return response;
   }
 
-  private void execute(Connection connection, Method method, int max) throws IOException {
-    this.execute(connection, method, max, 1);
+  private Response execute(Map<String, String> cookies, Connection connection, Method method, int max) {
+    return this.execute(cookies, connection, method, max, 1);
   }
 
-  private void execute(Connection connection, Method method, int max, int attempt) throws IOException {
+  private Response execute(Map<String, String> cookies, Connection connection, Method method, int max, int attempt) {
+    Response response;
+
     try {
-      this.lastResponse = connection.method(method).execute();
-      this.page = null;
-      this.cookies.putAll(this.lastResponse.cookies()); // Update cookies
+      response = connection.method(method).execute();
+      cookies.putAll(response.cookies()); // Update cookies
     } catch (SocketTimeoutException exception) {
-      this.verifyAttempt(connection, method, exception, max, attempt);
+      response = this.verifyAttempt(cookies, connection, method, exception, max, attempt);
+    } catch (IOException exception) {
+      throw new RuntimeException(exception);
     }
+
+    return response;
   }
 
-  private void verifyAttempt(Connection connection, Method method, IOException exception, int max, int attempt) throws IOException {
+  private Response verifyAttempt(Map<String, String> cookies, Connection connection, Method method, IOException exception, int max, int attempt) {
     long sleep;
 
     if (attempt == max) {
       Herald.notify(MessageType.WARN, "Attempts exceeded.");
-      throw exception;
+      throw new RuntimeException(exception);
     } else {
       Herald.notify(MessageType.WARN, "Timeout exceeded for the " + attempt + " attempt.");
       sleep = 100 * 2 ^ (attempt - 1); // Starting in 100 millis, the time will double in every attempt
       this.sleep(sleep);
       attempt++;
       Herald.notify(MessageType.INFO, "Starting the " + attempt + " attempt.");
-      this.execute(connection, method, max, attempt);
+      return this.execute(cookies, connection, method, max, attempt);
     }
   }
 
-  public void submit(Element form) throws IOException {
-    HashMap<String, String> subfields = new HashMap<>();
-    LinkedHashSet<String> names = new LinkedHashSet<>();
+  public void submit(Element form, Content.Initializer defaults, Map<String, String> fields, Map<String, String> cookies) throws IOException {
+    Map<String, String> subfields = new HashMap<>();
+    Set<String> names = new LinkedHashSet<>();
     Elements inputs;
     Content content;
     String method;
@@ -131,7 +122,7 @@ public class Navigation {
       String value;
 
       name = input.attr("name");
-      value = GeneralTool.nvl(this.fields.get(name), input.val(), "");
+      value = GeneralTool.nvl(fields.get(name), input.val(), "");
       subfields.put(name, value);
       names.add(name);
     });
@@ -142,28 +133,26 @@ public class Navigation {
       method = "GET";
     }
 
-    content = this.defaults.initialize()
+    content = defaults.initialize()
             .complement(form.attr("action"))
             .method(Method.valueOf(method))
             .fields(names)
             .build();
 
-    this.request(subfields, content);
+    this.requestSync(subfields, cookies, content);
   }
 
-  public HashMap<String, String> retrieve(Attribute attribute, String... names) {
-    HashMap<String, String> subfields = new HashMap<>();
-    Document current;
+  protected Map<String, String> retrieve(Document page, Attribute attribute, String... names) {
+    Map<String, String> subfields = new HashMap<>();
     List<String> list;
 
-    current = this.getPage(); // update the page
     list = Arrays.asList(names);
 
     list.forEach((String name) -> {
       Element element;
       String value;
 
-      element = current.getElementsByAttributeValue(attribute.toString().toLowerCase(), name).first();
+      element = page.getElementsByAttributeValue(attribute.toString().toLowerCase(), name).first();
 
       if (element != null) {
         value = element.val();
@@ -171,38 +160,7 @@ public class Navigation {
       }
     });
 
-    this.fields.putAll(subfields);
-
     return subfields;
-  }
-
-  public HashMap<String, String> getFields() {
-    return this.fields;
-  }
-
-  public Content.Initializer getDefaults() {
-    return this.defaults;
-  }
-
-  public int count() {
-    return count;
-  }
-
-  public Response getLastResponse() {
-    return this.lastResponse;
-  }
-
-  public Document getPage() {
-    // Só realiza o parse se a página estiver vazia
-    if (this.page == null) {
-      try {
-        this.page = this.lastResponse.parse();
-      } catch (IOException ex) {
-        return null;
-      }
-    }
-
-    return this.page;
   }
 
   private void sleep(long millis) {

@@ -3,6 +3,8 @@ package org.lucassouza.navigation.model;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 import org.jsoup.Connection.Method;
 
 /**
@@ -11,8 +13,8 @@ import org.jsoup.Connection.Method;
  */
 public class Content {
 
-  private final LinkedHashMap<String, String> headers;
-  private final LinkedHashSet<String> fields;
+  private final Map<String, String> headers;
+  private final Set<String> fields;
   private final Browser browser;
   private final String domain;
   private final String complement;
@@ -63,8 +65,8 @@ public class Content {
 
   public static class Builder {
 
-    private LinkedHashMap<String, String> headers;
-    private LinkedHashSet<String> fields;
+    private Map<String, String> headers;
+    private Set<String> fields;
     private Browser browser;
     private String domain;
     private String complement;
@@ -93,7 +95,7 @@ public class Content {
       this.ignore = false;
     }
 
-    public Builder headers(final LinkedHashMap<String, String> value) {
+    public Builder headers(final Map<String, String> value) {
       this.headers = value;
       return this;
     }
@@ -102,7 +104,7 @@ public class Content {
       return this.fields(new LinkedHashSet<>(Arrays.asList(values)));
     }
 
-    public Builder fields(final LinkedHashSet<String> value) {
+    public Builder fields(final Set<String> value) {
       this.fields.addAll(value);
 
       return this;
@@ -172,7 +174,7 @@ public class Content {
     return new Builder();
   }
 
-  private Content(final LinkedHashMap<String, String> headers, final LinkedHashSet<String> fields,
+  private Content(final Map<String, String> headers, final Set<String> fields,
           final Browser browser, final String domain, final String complement, final Method method,
           final Boolean redirect, final Boolean ignore, final int attempts,
           final int timeout, final String raw) {
@@ -191,11 +193,11 @@ public class Content {
     this.headers.put("User-Agent", this.browser.getUserAgent());
   }
 
-  public LinkedHashMap<String, String> getHeaders() {
+  public Map<String, String> getHeaders() {
     return headers;
   }
 
-  public LinkedHashSet<String> getFields() {
+  public Set<String> getFields() {
     return fields;
   }
 
