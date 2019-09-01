@@ -5,6 +5,7 @@ package org.lucassouza.navigation.model;
  * @author Lucas Souza [sorack@gmail.com]
  */
 public enum Browser {
+  CHROME_76("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36"),
   CHROME_73("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36"),
   CHROME_55("Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36"),
   CHROME_54("Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.100 Safari/537.36"),
@@ -21,7 +22,7 @@ public enum Browser {
   }
 
   public static Browser getDefault() {
-    return CHROME_73;
+    return CHROME_76;
   }
 
   public String getUserAgent() {
